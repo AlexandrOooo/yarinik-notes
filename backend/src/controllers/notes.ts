@@ -1,5 +1,7 @@
 import { RequestHandler } from 'express'
 import NoteModel from '../models/note'
+import createHttpError from 'http-errors'
+import mongoose from 'mongoose'
 
 export const getNotes: RequestHandler = async (req, res, next) => {
   try {
@@ -9,11 +11,41 @@ export const getNotes: RequestHandler = async (req, res, next) => {
     next(error)
   }
 }
-export const createNote: RequestHandler = async (req, res, next) => {
-  const { title, content } = req.body
+
+export const getNote: RequestHandler = async (req, res, next) => {
+  const noteId = req.params.noteId
   try {
-    const newNote = await NoteModel.create({ title, content })
-    res.status(200).json(newNote)
+    if (!mongoose.isValidObjectId(noteId)) {
+      throw createHttpError(400, 'Invalid noteId')
+    }
+    const note = await NoteModel.findById(noteId).exec()
+
+    if (!note) {
+      throw createHttpError(404, 'Note not found')
+    }
+    res.status(200).json(note)
+  } catch (error) {
+    next(error)
+  }
+}
+
+interface NoteBody {
+  title?: string
+  text?: string
+}
+export const createNote: RequestHandler<
+  unknown,
+  unknown,
+  NoteBody,
+  unknown
+> = async (req, res, next) => {
+  const { title, text } = req.body
+  try {
+    if (!title) {
+      throw createHttpError(400, 'Title is required')
+    }
+    const newNote = await NoteModel.create({ title, text })
+    res.status(201).json(newNote)
   } catch (error) {
     next(error)
   }
