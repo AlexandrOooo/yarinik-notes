@@ -4,16 +4,18 @@ import { Note } from '../Model/notes'
 import { useForm } from 'react-hook-form'
 import axios from 'axios'
 
-interface AddNoteDialogProps {
+interface AddEditNoteDialogProps {
   onDismiss: () => void
   onNoteSaved: (note: Note) => void
+  noteToEdit?: Note
 }
 
 interface NoteBody {
   title: string
   text: string
 }
-export const AddNoteDialog: React.FC<AddNoteDialogProps> = ({
+export const AddEditNoteDialog: React.FC<AddEditNoteDialogProps> = ({
+  noteToEdit,
   onDismiss,
   onNoteSaved
 }) => {
@@ -21,14 +23,26 @@ export const AddNoteDialog: React.FC<AddNoteDialogProps> = ({
     register,
     handleSubmit,
     formState: { errors, isSubmitting }
-  } = useForm<NoteBody>()
+  } = useForm<NoteBody>({
+    defaultValues: {
+      title: noteToEdit?.title || '',
+      text: noteToEdit?.text || ''
+    }
+  })
 
   async function onSubmit(input: NoteBody) {
     try {
-      const { data } = await axios.post('/api/notes', input, {
-        headers: { 'Content-Type': 'application/json' }
-      })
-      onNoteSaved(data)
+      let noteResponse
+      if (noteToEdit) {
+        noteResponse = await axios.put(`/api/notes/${noteToEdit._id}`, input, {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      } else {
+        noteResponse = await axios.post('/api/notes', input, {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      onNoteSaved(noteResponse.data)
     } catch (error) {
       console.log(error)
     }
@@ -36,10 +50,10 @@ export const AddNoteDialog: React.FC<AddNoteDialogProps> = ({
   return (
     <Modal show onHide={onDismiss} onSubmit={handleSubmit(onSubmit)}>
       <Modal.Header closeButton>
-        <Modal.Title>Add Note</Modal.Title>
+        <Modal.Title>{noteToEdit ? 'Edit Note' : 'Add Note'}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Form id="addNoteForm">
+        <Form id="addEditNoteForm">
           <Form.Group className="mb-3">
             <Form.Label>Title</Form.Label>
             <Form.Control
@@ -58,13 +72,13 @@ export const AddNoteDialog: React.FC<AddNoteDialogProps> = ({
               as="textarea"
               rows={5}
               placeholder="Enter text"
-              {...register('title')}
+              {...register('text')}
             />
           </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button type="submit" form="addNoteForm" disabled={isSubmitting}>
+        <Button type="submit" form="addEditNoteForm" disabled={isSubmitting}>
           Save
         </Button>
       </Modal.Footer>
