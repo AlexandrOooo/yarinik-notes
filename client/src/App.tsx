@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Note from './Components/Note'
 import { Note as NoteModel } from './Model/notes'
-import { Container, Row, Col, Button } from 'react-bootstrap'
+import { Container, Row, Col, Button, Spinner } from 'react-bootstrap'
 import styles from './App.module.css'
 import { AddEditNoteDialog } from './Components/AddEditNoteDialog'
 import { FaPlus } from 'react-icons/fa'
@@ -12,14 +12,20 @@ function App() {
   const [notes, setNotes] = useState<NoteModel[]>([])
   const [showAddNoteDialog, setShowAddNoteDialog] = useState(false)
   const [noteToEdit, setNoteToEdit] = useState<NoteModel | null>(null)
+  const [notesLoading, setNotesLoading] = useState(false)
+  const [showNotesLoadingError, setShowNotesLoadingError] = useState(false)
 
   useEffect(() => {
     const loadNotes = async () => {
       try {
+        setNotesLoading(true)
         const { data } = await axios.get('/api/notes')
         setNotes(data)
       } catch (error) {
+        setShowNotesLoadingError(true)
         console.log(error)
+      } finally {
+        setNotesLoading(false)
       }
     }
     loadNotes()
@@ -33,6 +39,22 @@ function App() {
       console.log(error)
     }
   }
+
+  const NoteRow = (
+    <Row xs={1} md={2} xl={3} className="g-4">
+      {notes.map((note) => (
+        <Col key={note._id}>
+          <Note
+            note={note}
+            className={styles.note}
+            onDeleteNoteClick={onDeleteNoteClick}
+            onNoteClick={() => setNoteToEdit(note)}
+          />
+        </Col>
+      ))}
+    </Row>
+  )
+
   return (
     <Container>
       <Button
@@ -41,18 +63,11 @@ function App() {
         <FaPlus />
         Add New Note
       </Button>
-      <Row xs={1} md={2} xl={3} className="g-4">
-        {notes.map((note) => (
-          <Col key={note._id}>
-            <Note
-              note={note}
-              className={styles.note}
-              onDeleteNoteClick={onDeleteNoteClick}
-              onNoteClick={() => setNoteToEdit(note)}
-            />
-          </Col>
-        ))}
-      </Row>
+      {notesLoading && <Spinner animation="border" variant="primary" />}
+      {showNotesLoadingError && (
+        <p>Something went wrong. Please try to reload page</p>
+      )}
+      {!notesLoading && !showNotesLoadingError && NoteRow}
       {showAddNoteDialog && (
         <AddEditNoteDialog
           onDismiss={() => setShowAddNoteDialog(false)}
